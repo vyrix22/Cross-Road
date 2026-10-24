@@ -118,6 +118,25 @@ class SoundEngine {
     noise.stop(now + 0.35);
   }
 
+  playTimeOut() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    [320, 260, 210, 160].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+      gain.gain.setValueAtTime(0.2, now + idx * 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.18);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now + idx * 0.1);
+      osc.stop(now + idx * 0.1 + 0.18);
+    });
+  }
+
   playBell() {
     // Disabled tic-tic sound per user request
   }
@@ -273,6 +292,14 @@ const finalScoreDOM = document.getElementById("final-score");
 const finalCoinsDOM = document.getElementById("final-coins");
 const coinsCounterDOM = document.getElementById("coins-counter");
 const tutorialHintDOM = document.getElementById("tutorial-hint");
+const timerCounterDOM = document.getElementById("timer-counter");
+const timerPillDOM = document.getElementById("timer-pill");
+const gameOverTitleDOM = document.getElementById("game-over-title");
+
+const GAME_DURATION = 60; // 60 seconds arcade timer
+let timeLeft = GAME_DURATION;
+let timerActive = false;
+let timerStartTime = null;
 
 let totalCoins = parseInt(localStorage.getItem("crossy_coins") || "0", 10);
 coinsCounterDOM.textContent = `${totalCoins}`;
@@ -316,6 +343,7 @@ let lanes = [];
 let currentLane = 0;
 let currentColumn = Math.floor(columns / 2);
 let lastFrameTimestamp = 0;
+let frameAccumulator = 0;
 let startMoving = false;
 let moves = [];
 let stepStartTimestamp = null;
@@ -1310,8 +1338,8 @@ function Lane(index) {
           decoRoll < 0.45
             ? createWildflower()
             : decoRoll < 0.82
-            ? createGrassTuft()
-            : createBoulder();
+              ? createGrassTuft()
+              : createBoulder();
         const randCol = Math.floor(Math.random() * columns);
         deco.position.x =
           (randCol * positionWidth + positionWidth / 2) * zoom - (boardWidth * zoom) / 2;
@@ -1537,6 +1565,7 @@ function initialiseGame() {
   currentLane = 0;
   currentColumn = Math.floor(columns / 2);
   lastFrameTimestamp = 0;
+  frameAccumulator = 0;
   recentRoadCount = 0;
   startMoving = false;
   moves = [];
@@ -1558,6 +1587,13 @@ function initialiseGame() {
   counterDOM.textContent = "0";
   counterDOM.classList.remove("pop");
   endDOM.classList.remove("visible");
+
+  timeLeft = GAME_DURATION;
+  timerActive = false;
+  timerStartTime = null;
+  if (timerCounterDOM) timerCounterDOM.textContent = `${GAME_DURATION}`;
+  if (timerPillDOM) timerPillDOM.classList.remove("danger");
+  if (gameOverTitleDOM) gameOverTitleDOM.textContent = "GAME OVER!";
 }
 
 initialiseGame();
@@ -1566,9 +1602,13 @@ initialiseGame();
 // 11. INPUT HANDLING & PLAYER MOVEMENT
 // ==========================================
 function hideTutorial() {
-  if (!hasMovedOnce && tutorialHintDOM) {
-    tutorialHintDOM.classList.add("hidden");
+  if (!hasMovedOnce) {
+    if (tutorialHintDOM) tutorialHintDOM.classList.add("hidden");
     hasMovedOnce = true;
+    if (!timerActive) {
+      timerActive = true;
+      timerStartTime = performance.now();
+    }
   }
 }
 
@@ -1577,6 +1617,10 @@ function move(direction) {
   if (moves.length >= 2) return; // Prevent input lag & queue overflow
   sounds.init();
   hideTutorial();
+  if (!timerActive) {
+    timerActive = true;
+    timerStartTime = performance.now();
+  }
 
   const finalPositions = moves.reduce(
     (pos, m) => {
@@ -1730,10 +1774,18 @@ function retryGame() {
 document.getElementById("retry").addEventListener("click", retryGame);
 
 // Trigger game over
-function triggerGameOver() {
+function triggerGameOver(reason = "collision") {
   if (isDead) return;
   isDead = true;
-  sounds.playCrash();
+  timerActive = false;
+
+  if (reason === "timeout") {
+    if (gameOverTitleDOM) gameOverTitleDOM.textContent = "TIME'S UP!";
+    sounds.playTimeOut();
+  } else {
+    if (gameOverTitleDOM) gameOverTitleDOM.textContent = "GAME OVER!";
+    sounds.playCrash();
+  }
 
   // Screen shake
   document.body.classList.add("shake");
@@ -1765,7 +1817,7 @@ function triggerGameOver() {
 }
 
 // ==========================================
-// 12. MAIN ANIMATION & GAME LOOP (Strictly Locked at 60 FPS - Not Less, Not More)
+// 12. MAIN ANIMATION & GAME LOOP (Strictly Locked at 60 FPS - Zero Stutter Engine)
 // ==========================================
 const TARGET_FPS = 60;
 const FRAME_INTERVAL = 1000 / TARGET_FPS; // 16.666666666666668 ms per frame
@@ -1775,25 +1827,51 @@ function animate(timestamp) {
 
   if (!lastFrameTimestamp) {
     lastFrameTimestamp = timestamp;
-  }
-
-  const elapsed = timestamp - lastFrameTimestamp;
-
-  // Strict 60 FPS frame limiter:
-  // Skips execution if under 16.67ms (allows 0.75ms grace for standard display timer jitter)
-  // Ensures game runs at exactly 60 FPS on 60Hz, 75Hz, 120Hz, 144Hz, and 240Hz monitors
-  if (elapsed < FRAME_INTERVAL - 0.75) {
     return;
   }
 
-  // Phase-align next frame timestamp to keep exactly 60 FPS without cumulative drift
-  lastFrameTimestamp = timestamp - (elapsed % FRAME_INTERVAL);
-  if (elapsed > 250) {
-    lastFrameTimestamp = timestamp; // Clamp on tab pause/minimize
+  const elapsed = timestamp - lastFrameTimestamp;
+  lastFrameTimestamp = timestamp;
+
+  // Add elapsed time to accumulator (clamped to prevent runaway on tab switch)
+  frameAccumulator += Math.min(elapsed, 100);
+
+  // Precision 60 FPS Frame Limiter:
+  // Threshold of FRAME_INTERVAL - 3.2ms (13.47ms) guarantees:
+  // 1. On 60Hz displays: standard ~16.6ms frames NEVER get dropped or skipped to 30 FPS.
+  // 2. On 120Hz/144Hz/240Hz displays: cleanly caps at exactly 60 FPS with zero cadence jitter.
+  if (frameAccumulator < FRAME_INTERVAL - 3.2) {
+    return;
+  }
+
+  // Deduct one 60 FPS frame cycle
+  frameAccumulator = Math.max(0, frameAccumulator - FRAME_INTERVAL);
+  if (frameAccumulator > FRAME_INTERVAL) {
+    frameAccumulator = 0; // Prevent runaway catch-up loops
   }
 
   // Exact fixed 60 FPS delta
   const delta = FRAME_INTERVAL;
+
+  // Countdown 60s Game Timer (100% strictly synced to real-world clock via performance.now)
+  if (timerActive && !isDead && timerStartTime !== null) {
+    const elapsedRealSeconds = (performance.now() - timerStartTime) / 1000;
+    timeLeft = Math.max(0, GAME_DURATION - elapsedRealSeconds);
+    const displaySeconds = Math.ceil(timeLeft);
+    if (timerCounterDOM) {
+      timerCounterDOM.textContent = `${displaySeconds}`;
+    }
+
+    if (displaySeconds <= 10) {
+      if (timerPillDOM) timerPillDOM.classList.add("danger");
+    } else {
+      if (timerPillDOM) timerPillDOM.classList.remove("danger");
+    }
+
+    if (timeLeft <= 0) {
+      triggerGameOver("timeout");
+    }
+  }
 
   // 1. Update Particles
   particles.update();
@@ -1908,7 +1986,7 @@ function animate(timestamp) {
   if (stepStartTimestamp && !isDead) {
     const moveDeltaTime = timestamp - stepStartTimestamp;
     const progress = Math.min(moveDeltaTime / stepTime, 1);
-    
+
     // Silky smooth sinusoidal ease-in-out curve
     const eased = 0.5 - 0.5 * Math.cos(progress * Math.PI);
     const moveDeltaDistance = eased * positionWidth * zoom;

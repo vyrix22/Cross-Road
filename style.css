@@ -102,8 +102,54 @@ canvas {
   color: #fcd34d;
 }
 
-.hud-pill.best {
-  color: #6ee7b7;
+.hud-pill.timer {
+  color: #38bdf8;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.85rem;
+  transition: background 0.25s, border-color 0.25s, color 0.25s, transform 0.25s;
+}
+
+.hud-pill.timer .icon {
+  font-size: 1.05rem;
+}
+
+#timer-counter {
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  min-width: 24px;
+  text-align: right;
+}
+
+.timer-unit {
+  font-family: "Outfit", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-left: 2px;
+}
+
+/* Danger Pulse when time <= 10s */
+.hud-pill.timer.danger {
+  color: #f87171;
+  background: rgba(220, 38, 38, 0.35);
+  border-color: rgba(239, 68, 68, 0.85);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  animation: timer-pulse 0.8s ease-in-out infinite alternate;
+}
+
+.hud-pill.timer.danger .timer-unit {
+  color: #fca5a5;
+}
+
+@keyframes timer-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+  }
+  100% {
+    transform: scale(1.08);
+    box-shadow: 0 0 22px rgba(239, 68, 68, 0.85);
+  }
 }
 
 #counter-container {
@@ -353,8 +399,17 @@ canvas {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { transform: scale(1); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); }
-  50% { transform: scale(1.08); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.7); }
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  }
+
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.7);
+  }
 }
 
 #retry {
@@ -396,8 +451,25 @@ canvas {
 }
 
 @keyframes screen-shake {
-  10%, 90% { transform: translate3d(-3px, 1px, 0); }
-  20%, 80% { transform: translate3d(4px, -2px, 0); }
-  30%, 50%, 70% { transform: translate3d(-5px, 3px, 0); }
-  40%, 60% { transform: translate3d(5px, -3px, 0); }
+
+  10%,
+  90% {
+    transform: translate3d(-3px, 1px, 0);
+  }
+
+  20%,
+  80% {
+    transform: translate3d(4px, -2px, 0);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-5px, 3px, 0);
+  }
+
+  40%,
+  60% {
+    transform: translate3d(5px, -3px, 0);
+  }
 }
