@@ -1743,13 +1743,8 @@ let hasSwiped = false;
 const SLIDE_THRESHOLD = 28; // Distance in pixels to trigger a single slide step
 
 function handleSlideStart(clientX, clientY, target) {
-  // Ignore touches on UI controls like modal, sound button, or d-pad buttons
-  if (
-    target &&
-    (target.closest("#end") ||
-      target.closest("#sound-btn") ||
-      target.closest("#controlls button"))
-  ) {
+  // Ignore touches on UI controls like modal or sound button
+  if (target && (target.closest("#end") || target.closest("#sound-btn"))) {
     return false;
   }
   touchStartX = clientX;
@@ -1762,12 +1757,7 @@ function handleSlideStart(clientX, clientY, target) {
 
 function handleSlideMove(clientX, clientY, target) {
   if (!touchActive || hasSwiped) return; // Strictly 1 step per swipe!
-  if (
-    target &&
-    (target.closest("#end") ||
-      target.closest("#sound-btn") ||
-      target.closest("#controlls button"))
-  ) {
+  if (target && (target.closest("#end") || target.closest("#sound-btn"))) {
     return;
   }
 
@@ -1860,23 +1850,6 @@ window.addEventListener(
   { passive: false }
 );
 
-// Touch / Button listeners
-document.getElementById("forward").addEventListener("click", (e) => {
-  e.stopPropagation();
-  move("forward");
-});
-document.getElementById("backward").addEventListener("click", (e) => {
-  e.stopPropagation();
-  move("backward");
-});
-document.getElementById("left").addEventListener("click", (e) => {
-  e.stopPropagation();
-  move("left");
-});
-document.getElementById("right").addEventListener("click", (e) => {
-  e.stopPropagation();
-  move("right");
-});
 
 // Keyboard listener
 window.addEventListener("keydown", (e) => {

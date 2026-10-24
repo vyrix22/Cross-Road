@@ -261,80 +261,6 @@ canvas {
   transform: translateX(-50%) translateY(-10px);
 }
 
-/* Touch Controls - pinned to bottom */
-#controlls {
-  position: absolute;
-  bottom: 18px;
-  left: 0;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  touch-action: none;
-}
-
-#controlls .d-pad {
-  display: grid;
-  grid-template-columns: 62px 62px 62px;
-  grid-template-rows: 62px 62px;
-  grid-gap: 12px;
-  pointer-events: none;
-  touch-action: none;
-}
-
-#controlls button {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25), 0 3px 0 #94a3b8;
-  transition: transform 0.1s, box-shadow 0.1s, background 0.1s;
-  outline: none;
-  pointer-events: auto;
-  touch-action: none;
-}
-
-#controlls button svg {
-  fill: #1e293b;
-  transition: fill 0.1s;
-}
-
-#controlls button:hover {
-  background: #ffffff;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3), 0 4px 0 #64748b;
-}
-
-#controlls button:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), 0 1px 0 #64748b;
-  background: #f1f5f9;
-}
-
-#controlls button#forward {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-#controlls button#left {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-#controlls button#backward {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-#controlls button#right {
-  grid-column: 3;
-  grid-row: 2;
-}
-
 /* Game Over Modal */
 #end {
   position: absolute;
@@ -537,12 +463,8 @@ canvas {
   }
 }
 
-/* Mobile & Phone Responsive Controls - Hidden Arrow Keys on Mobile */
+/* Mobile & Phone Responsive Layout */
 @media (max-width: 768px), (hover: none) and (pointer: coarse) {
-  #controlls {
-    display: none !important;
-  }
-
   #top-bar {
     padding: 10px 12px;
   }
