@@ -301,8 +301,12 @@ let timeLeft = GAME_DURATION;
 let timerActive = false;
 let timerStartTime = null;
 
-let totalCoins = parseInt(localStorage.getItem("crossy_coins") || "0", 10);
-coinsCounterDOM.textContent = `${totalCoins}`;
+// Reset coins on refresh so each game session starts fresh
+try {
+  localStorage.removeItem("crossy_coins");
+} catch (e) {}
+let totalCoins = 0;
+if (coinsCounterDOM) coinsCounterDOM.textContent = "0";
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa0d8ef);
@@ -340,7 +344,10 @@ const fullBoardWidth = boardWidth * 3.4;
 const stepTime = 175; // milliseconds per step (crisp and responsive)
 
 let lanes = [];
+let backdropLanes = [];
 let currentLane = 0;
+let maxLaneReached = 0;
+const COIN_SCORE_VALUE = 5; // 1 coin = 5 score in the game
 let currentColumn = Math.floor(columns / 2);
 let lastFrameTimestamp = 0;
 let frameAccumulator = 0;
@@ -350,6 +357,38 @@ let stepStartTimestamp = null;
 let isDead = false;
 let sessionCoins = 0;
 let hasMovedOnce = false;
+
+function calculateScore() {
+  return Math.max(0, maxLaneReached) + sessionCoins * COIN_SCORE_VALUE;
+}
+
+function updateScore(pop = false) {
+  const score = calculateScore();
+  counterDOM.textContent = `${score}`;
+  if (pop) {
+    counterDOM.classList.add("pop");
+    setTimeout(() => counterDOM.classList.remove("pop"), 120);
+  }
+}
+
+function showFloatingScore(text, x, y, z) {
+  try {
+    const vector = new THREE.Vector3(x, y, z + 12 * zoom);
+    vector.project(camera);
+    const screenX = (vector.x * 0.5 + 0.5) * window.innerWidth;
+    const screenY = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+
+    const popup = document.createElement("div");
+    popup.className = "floating-score";
+    popup.textContent = text;
+    popup.style.left = `${screenX}px`;
+    popup.style.top = `${screenY}px`;
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 850);
+  } catch (err) {
+    // Graceful fallback
+  }
+}
 
 // Lighting setup
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x88aa66, 0.65);
@@ -1516,14 +1555,18 @@ function Lane(index) {
 // 10. GAME STATE INITIALIZATION
 // ==========================================
 function generateLanes() {
-  return [-9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+  backdropLanes = [];
+  const allLanes = [-9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
     .map((index) => {
       const lane = new Lane(index);
       lane.mesh.position.y = index * positionWidth * zoom;
       scene.add(lane.mesh);
+      if (index < 0) {
+        backdropLanes.push(lane);
+      }
       return lane;
-    })
-    .filter((lane) => lane.index >= 0);
+    });
+  return allLanes.filter((lane) => lane.index >= 0);
 }
 
 let lastPrunedLane = 0;
@@ -1551,9 +1594,16 @@ function addLane() {
 }
 
 function initialiseGame() {
-  // Clean up any existing lanes from scene before regenerating
+  // Clean up any existing lanes and backdrop wings from scene before regenerating
   if (lanes && lanes.length > 0) {
     lanes.forEach((lane) => {
+      if (lane && lane.mesh && lane.mesh.parent) {
+        scene.remove(lane.mesh);
+      }
+    });
+  }
+  if (backdropLanes && backdropLanes.length > 0) {
+    backdropLanes.forEach((lane) => {
       if (lane && lane.mesh && lane.mesh.parent) {
         scene.remove(lane.mesh);
       }
@@ -1563,6 +1613,7 @@ function initialiseGame() {
   lanes = generateLanes();
   lastPrunedLane = 0;
   currentLane = 0;
+  maxLaneReached = 0;
   currentColumn = Math.floor(columns / 2);
   lastFrameTimestamp = 0;
   frameAccumulator = 0;
@@ -1572,6 +1623,8 @@ function initialiseGame() {
   stepStartTimestamp = null;
   isDead = false;
   sessionCoins = 0;
+  totalCoins = 0;
+  if (coinsCounterDOM) coinsCounterDOM.textContent = "0";
   hasMovedOnce = false;
 
   chicken.position.set(0, 0, 0);
@@ -1584,7 +1637,7 @@ function initialiseGame() {
   dirLight.position.x = initialDirLightPositionX;
   dirLight.position.y = initialDirLightPositionY;
 
-  counterDOM.textContent = "0";
+  updateScore(false);
   counterDOM.classList.remove("pop");
   endDOM.classList.remove("visible");
 
@@ -1679,39 +1732,133 @@ function move(direction) {
   sounds.playHop();
 }
 
-// Tap anywhere on canvas to hop forward, or swipe to steer
+// ==========================================
+// Touch & Slide (Swipe) Controller for Mobile & Phone
+// ==========================================
 let touchStartX = 0;
 let touchStartY = 0;
 let touchStartTime = 0;
+let touchActive = false;
+let hasSwiped = false;
+const SLIDE_THRESHOLD = 28; // Distance in pixels to trigger a single slide step
 
-window.addEventListener("pointerdown", (e) => {
-  if (e.target.closest("button") || e.target.closest("#end")) return;
-  touchStartX = e.clientX;
-  touchStartY = e.clientY;
+function handleSlideStart(clientX, clientY, target) {
+  // Ignore touches on UI controls like modal, sound button, or d-pad buttons
+  if (
+    target &&
+    (target.closest("#end") ||
+      target.closest("#sound-btn") ||
+      target.closest("#controlls button"))
+  ) {
+    return false;
+  }
+  touchStartX = clientX;
+  touchStartY = clientY;
   touchStartTime = Date.now();
-});
+  touchActive = true;
+  hasSwiped = false;
+  return true;
+}
 
-window.addEventListener("pointerup", (e) => {
-  if (e.target.closest("button") || e.target.closest("#end")) return;
-  const dx = e.clientX - touchStartX;
-  const dy = e.clientY - touchStartY;
-  const dt = Date.now() - touchStartTime;
+function handleSlideMove(clientX, clientY, target) {
+  if (!touchActive || hasSwiped) return; // Strictly 1 step per swipe!
+  if (
+    target &&
+    (target.closest("#end") ||
+      target.closest("#sound-btn") ||
+      target.closest("#controlls button"))
+  ) {
+    return;
+  }
+
+  const dx = clientX - touchStartX;
+  const dy = clientY - touchStartY;
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
   const dist = Math.hypot(dx, dy);
 
-  if (dist < 18 && dt < 400) {
-    // Quick tap or click -> hop forward!
-    move("forward");
-  } else if (dist >= 25) {
-    // Swipe gesture
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 25) move("right");
-      else if (dx < -25) move("left");
+  if (dist >= SLIDE_THRESHOLD) {
+    hasSwiped = true; // Lock gesture until finger is lifted and swiped again
+    if (absX > absY) {
+      if (dx > 0) {
+        move("right");
+      } else {
+        move("left");
+      }
     } else {
-      if (dy > 25) move("backward");
-      else if (dy < -25) move("forward");
+      if (dy < 0) {
+        move("forward");
+      } else {
+        move("backward");
+      }
     }
   }
-});
+}
+
+function handleSlideEnd() {
+  touchActive = false;
+  hasSwiped = false;
+  // Tap to move completely removed: tapping does not move the chicken
+}
+
+function handleSlideCancel() {
+  touchActive = false;
+  hasSwiped = false;
+}
+
+// Pointer Events (supports Touch, Pen, and Mouse)
+window.addEventListener(
+  "pointerdown",
+  (e) => {
+    if (handleSlideStart(e.clientX, e.clientY, e.target)) {
+      try {
+        if (e.target && e.target.setPointerCapture && e.pointerId !== undefined) {
+          e.target.setPointerCapture(e.pointerId);
+        }
+      } catch (_) {}
+    }
+  },
+  { passive: true }
+);
+
+window.addEventListener(
+  "pointermove",
+  (e) => {
+    handleSlideMove(e.clientX, e.clientY, e.target);
+  },
+  { passive: true }
+);
+
+window.addEventListener(
+  "pointerup",
+  (e) => {
+    handleSlideEnd(e.clientX, e.clientY, e.target);
+    try {
+      if (e.target && e.target.releasePointerCapture && e.pointerId !== undefined) {
+        e.target.releasePointerCapture(e.pointerId);
+      }
+    } catch (_) {}
+  },
+  { passive: true }
+);
+
+window.addEventListener(
+  "pointercancel",
+  () => {
+    handleSlideCancel();
+  },
+  { passive: true }
+);
+
+// Prevent mobile browser gesture conflicts (pull-to-refresh, pan scroll) during gameplay
+window.addEventListener(
+  "touchmove",
+  (e) => {
+    if (e.target.closest("#end")) return;
+    if (e.cancelable) e.preventDefault();
+  },
+  { passive: false }
+);
 
 // Touch / Button listeners
 document.getElementById("forward").addEventListener("click", (e) => {
@@ -1801,11 +1948,13 @@ function triggerGameOver(reason = "collision") {
   // Flatten chicken animation
   chicken.bodyRoot.scale.set(1.4, 1.4, 0.2);
 
-  const currentScore = currentLane;
+  const currentScore = calculateScore();
 
-  totalCoins += sessionCoins;
-  localStorage.setItem("crossy_coins", totalCoins);
-  coinsCounterDOM.textContent = `${totalCoins}`;
+  totalCoins = sessionCoins;
+  try {
+    localStorage.removeItem("crossy_coins");
+  } catch (e) {}
+  coinsCounterDOM.textContent = `${sessionCoins}`;
 
   finalScoreDOM.textContent = currentScore;
   finalCoinsDOM.textContent = sessionCoins;
@@ -2048,13 +2197,14 @@ function animate(timestamp) {
       switch (moves[0]) {
         case "forward":
           currentLane++;
-          counterDOM.textContent = currentLane;
-          counterDOM.classList.add("pop");
-          setTimeout(() => counterDOM.classList.remove("pop"), 120);
+          if (currentLane > maxLaneReached) {
+            maxLaneReached = currentLane;
+          }
+          updateScore(true);
           break;
         case "backward":
           currentLane--;
-          counterDOM.textContent = currentLane;
+          updateScore(false);
           break;
         case "left":
           currentColumn--;
@@ -2064,17 +2214,20 @@ function animate(timestamp) {
           break;
       }
 
-      // Check coin pickup on landed lane
+      // Check coin pickup on landed lane (1 coin = 5 score in the game)
       if (lanes[currentLane] && lanes[currentLane].coins && lanes[currentLane].coins.length > 0) {
-        lanes[currentLane].coins.forEach((coin, idx) => {
+        lanes[currentLane].coins = lanes[currentLane].coins.filter((coin) => {
           if (coin.col === currentColumn) {
             sounds.playCoin();
             particles.spawnCoinSparkle(chicken.position.x, chicken.position.y, chicken.position.z);
             sessionCoins++;
-            coinsCounterDOM.textContent = `${totalCoins + sessionCoins}`;
+            coinsCounterDOM.textContent = `${sessionCoins}`;
+            showFloatingScore("+5", chicken.position.x, chicken.position.y, chicken.position.z);
+            updateScore(true);
             lanes[currentLane].mesh.remove(coin);
-            lanes[currentLane].coins.splice(idx, 1);
+            return false;
           }
+          return true;
         });
       }
 
