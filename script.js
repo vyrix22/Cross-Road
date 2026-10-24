@@ -2222,6 +2222,11 @@ function animate(timestamp) {
             particles.spawnCoinSparkle(chicken.position.x, chicken.position.y, chicken.position.z);
             sessionCoins++;
             coinsCounterDOM.textContent = `${sessionCoins}`;
+            const coinsPill = document.querySelector(".hud-pill.coins");
+            if (coinsPill) {
+              coinsPill.classList.add("pop");
+              setTimeout(() => coinsPill.classList.remove("pop"), 140);
+            }
             showFloatingScore("+5", chicken.position.x, chicken.position.y, chicken.position.z);
             updateScore(true);
             lanes[currentLane].mesh.remove(coin);

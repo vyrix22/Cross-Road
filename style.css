@@ -79,78 +79,105 @@ canvas {
   gap: 12px;
 }
 
+/* Unified 3D Voxel Arcade HUD Pills (Matching Score Styling) */
 .hud-pill {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(15, 23, 42, 0.65);
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--border-glass);
+  border: 3px solid #ffffff;
   padding: 8px 16px;
-  border-radius: 9999px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  font-weight: 700;
-  font-size: 0.95rem;
-  letter-spacing: 0.5px;
+  border-radius: 14px;
+  box-shadow: 0 5px 0 #0f172a, 0 8px 18px rgba(0, 0, 0, 0.45);
+  font-family: "Press Start 2P", cursive, monospace;
+  font-weight: 900;
+  color: #ffffff;
+  transition: transform 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.12s, border-color 0.12s;
 }
 
 .hud-pill .icon {
-  font-size: 1.15rem;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  font-size: 1.25rem;
+  line-height: 1;
+  filter: drop-shadow(0 3px 0 #0f172a) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
 }
 
-.hud-pill.coins {
-  color: #fcd34d;
+#coins-counter {
+  font-family: "Press Start 2P", cursive, monospace;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 4px 0 #0f172a, 0 6px 12px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.5px;
+  transition: color 0.12s;
+}
+
+.hud-pill.coins.pop {
+  transform: scale(1.22);
+  border-color: #fef08a;
+  box-shadow: 0 5px 0 #78350f, 0 0 20px rgba(254, 240, 138, 0.65);
+}
+
+.hud-pill.coins.pop #coins-counter {
+  color: #fef08a;
+  text-shadow: 0 4px 0 #78350f, 0 6px 12px rgba(0, 0, 0, 0.5);
 }
 
 .hud-pill.timer {
-  color: #38bdf8;
-  font-family: "Press Start 2P", monospace;
-  font-size: 0.85rem;
-  transition: background 0.25s, border-color 0.25s, color 0.25s, transform 0.25s;
-}
-
-.hud-pill.timer .icon {
-  font-size: 1.05rem;
+  font-family: "Press Start 2P", cursive, monospace;
 }
 
 #timer-counter {
+  font-family: "Press Start 2P", cursive, monospace;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 4px 0 #0f172a, 0 6px 12px rgba(0, 0, 0, 0.4);
   font-variant-numeric: tabular-nums;
   display: inline-block;
-  min-width: 24px;
+  min-width: 28px;
   text-align: right;
+  letter-spacing: 0.5px;
 }
 
 .timer-unit {
-  font-family: "Outfit", sans-serif;
+  font-family: "Press Start 2P", cursive, monospace;
   font-size: 0.75rem;
-  font-weight: 700;
-  color: #94a3b8;
-  margin-left: 2px;
+  font-weight: 900;
+  color: #e2e8f0;
+  text-shadow: 0 3px 0 #0f172a;
+  margin-left: 3px;
+  align-self: flex-end;
+  margin-bottom: 2px;
 }
 
 /* Danger Pulse when time <= 10s */
 .hud-pill.timer.danger {
-  color: #f87171;
-  background: rgba(220, 38, 38, 0.35);
-  border-color: rgba(239, 68, 68, 0.85);
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  animation: timer-pulse 0.8s ease-in-out infinite alternate;
+  border-color: #ef4444;
+  background: rgba(185, 28, 28, 0.55);
+  box-shadow: 0 5px 0 #7f1d1d, 0 0 22px rgba(239, 68, 68, 0.8);
+  animation: timer-pulse 0.7s ease-in-out infinite alternate;
+}
+
+.hud-pill.timer.danger #timer-counter {
+  color: #fecaca;
+  text-shadow: 0 4px 0 #7f1d1d, 0 6px 12px rgba(0, 0, 0, 0.5);
 }
 
 .hud-pill.timer.danger .timer-unit {
   color: #fca5a5;
+  text-shadow: 0 3px 0 #7f1d1d;
 }
 
 @keyframes timer-pulse {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 5px 0 #7f1d1d, 0 0 12px rgba(239, 68, 68, 0.5);
   }
   100% {
     transform: scale(1.08);
-    box-shadow: 0 0 22px rgba(239, 68, 68, 0.85);
+    box-shadow: 0 5px 0 #7f1d1d, 0 0 26px rgba(239, 68, 68, 0.95);
   }
 }
 
@@ -180,31 +207,32 @@ canvas {
 }
 
 .icon-btn {
-  background: rgba(15, 23, 42, 0.65);
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(8px);
-  border: 1px solid var(--border-glass);
+  border: 3px solid #ffffff;
   color: white;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  transition: all 0.2s ease;
+  box-shadow: 0 5px 0 #0f172a, 0 8px 18px rgba(0, 0, 0, 0.45);
+  transition: all 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   outline: none;
 }
 
 .icon-btn:hover {
-  background: rgba(30, 41, 59, 0.85);
-  transform: translateY(-2px) scale(1.05);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(30, 41, 59, 0.95);
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 #0f172a, 0 10px 22px rgba(0, 0, 0, 0.5);
 }
 
 .icon-btn:active {
-  transform: translateY(1px) scale(0.95);
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #0f172a, 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 /* Tutorial Hint */
@@ -515,8 +543,54 @@ canvas {
     display: none !important;
   }
 
+  #top-bar {
+    padding: 10px 12px;
+  }
+
+  .stats-group {
+    gap: 8px;
+  }
+
+  .hud-pill {
+    padding: 6px 10px;
+    gap: 6px;
+    border-radius: 11px;
+    border-width: 2.5px;
+    box-shadow: 0 4px 0 #0f172a, 0 6px 14px rgba(0, 0, 0, 0.35);
+  }
+
+  .hud-pill .icon {
+    font-size: 1rem;
+  }
+
+  #coins-counter,
+  #timer-counter {
+    font-size: 0.95rem;
+    min-width: 22px;
+    text-shadow: 0 3px 0 #0f172a, 0 4px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .timer-unit {
+    font-size: 0.65rem;
+    text-shadow: 0 2px 0 #0f172a;
+  }
+
+  #counter {
+    font-size: 2.1rem;
+    text-shadow: 0 3px 0 #0f172a, 0 5px 10px rgba(0, 0, 0, 0.4);
+  }
+
+  .icon-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    border-width: 2.5px;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 0 #0f172a, 0 6px 14px rgba(0, 0, 0, 0.35);
+  }
+
   #tutorial-hint {
-    top: 78px;
+    top: 72px;
     font-size: 0.7rem;
     padding: 6px 14px;
   }
